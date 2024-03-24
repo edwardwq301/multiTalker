@@ -9,9 +9,12 @@
 
 const std::string EXIT = "EXIT";
 const std::string SHOW_WELCOME_ID = "Welcome join the room, ID is %d\n";
-const std::string CLIENT_SAY = "you > %s\n";
-
+const std::string CLIENT_SAY = "you <- %s\n";
+const std::string CLIENT_RECV = "from %d -> %s\n";
+const std::string ONLY_USER = "you are the only user\n";
 const int BUF_SIZE = 1024;
+
+
 int setNonBlock(int fd);
 
 class Epoller {
