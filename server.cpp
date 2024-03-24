@@ -60,6 +60,49 @@ public:
         return ret;
     }
 
+    void processConnect(int fd) {
+        struct sockaddr_in client_address;
+        socklen_t client_addrLength = sizeof(struct sockaddr_in);
+        int clientfd = accept(listener, (struct sockaddr *)&client_address, &client_addrLength);
+
+        printf("client connection from: %s: %d, clientfd = %d\n",
+               inet_ntoa(client_address.sin_addr),
+               ntohs(client_address.sin_port),
+               clientfd);
+
+        epollID.addfd(clientfd, EPOLLIN, true);
+
+        // 服务端保存用户连接
+        clients_list.insert(clientfd);
+        printf("Now there are %d clients int the chat room\n", (int)clients_list.size());
+
+        // show welcome
+        bzero(sendMessage, BUF_SIZE);
+        sprintf(sendMessage, SHOW_WELCOME_ID.c_str(), clientfd);
+        int ret = send(clientfd, sendMessage, BUF_SIZE, 0);
+        if (ret < 0) {
+            perror("send error");
+            exit(-1);
+        }
+    }
+
+    void processSend(int temfd) {
+        bzero(recvMessage, BUF_SIZE);
+        int ret = recv(temfd, recvMessage, BUF_SIZE, 0);
+        // exit
+        if (!strcmp(recvMessage, EXIT.c_str())) {
+            epollID.delfd(temfd);
+            clients_list.erase(temfd);
+            printf("client %d log out\n", temfd);
+        }
+        else {
+            for (int k : clients_list)
+                if (k != temfd) {
+                    sprintf(sendMessage, CLIENT_RECV.c_str(), temfd, recvMessage);
+                    send(k, sendMessage, BUF_SIZE, 0);
+                }
+        }
+    }
     void process() {
         epollID.addfd(listener, EPOLLIN, true);
 
@@ -73,52 +116,15 @@ public:
             for (int i = 0; i < eventCnt; ++i) {
                 int temfd = epollID.getfd(i);
                 // server get connetction
-                if (temfd == listener) {
-                    struct sockaddr_in client_address;
-                    socklen_t client_addrLength = sizeof(struct sockaddr_in);
-                    int clientfd = accept(listener, (struct sockaddr *)&client_address, &client_addrLength);
+                if (temfd == listener)
+                    processConnect(temfd);
 
-                    printf("client connection from: %s: %d, clientfd = %d\n",
-                           inet_ntoa(client_address.sin_addr),
-                           ntohs(client_address.sin_port),
-                           clientfd);
-
-                    epollID.addfd(clientfd, EPOLLIN, true);
-
-                    // 服务端保存用户连接
-                    clients_list.insert(clientfd);
-                    printf("Now there are %d clients int the chat room\n", (int)clients_list.size());
-
-                    // show welcome
-                    bzero(sendMessage, BUF_SIZE);
-                    sprintf(sendMessage, SHOW_WELCOME_ID.c_str(), clientfd);
-                    int ret = send(clientfd, sendMessage, BUF_SIZE, 0);
-                    if (ret < 0) {
-                        perror("send error");
-                        exit(-1);
-                    }
-                }
                 // client send message
                 else {
-                    if (clients_list.size() == 1) {
+                    if (clients_list.size() == 1)
                         send(temfd, ONLY_USER.c_str(), BUF_SIZE, 0);
-                    }
-
-                    bzero(recvMessage, BUF_SIZE);
-                    int ret = recv(temfd, recvMessage, BUF_SIZE, 0);
-                    // exit
-                    if (!strcmp(recvMessage, EXIT.c_str())) {
-                        epollID.delfd(temfd);
-                        clients_list.erase(temfd);
-                        printf("client %d log out\n", temfd);
-                    }
-                    else {
-                        for (int k : clients_list)
-                            if (k != temfd) {
-                                sprintf(sendMessage, CLIENT_RECV.c_str(), temfd, recvMessage);
-                                send(k, sendMessage, BUF_SIZE, 0);
-                            }
-                    }
+                    else
+                        processSend(temfd);
                 }
             }
         }
