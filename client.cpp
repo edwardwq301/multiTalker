@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <iostream>
 #include <unistd.h>
+#include <string.h>
 
 using namespace std;
 class client {
@@ -15,8 +16,13 @@ class client {
     string words;
     bool close_flag = false;
     char message[BUF_SIZE];
+    char sendbuf[BUF_SIZE];
 
 public:
+    Epoller epollID;
+    client() :
+        epollID() {}
+
     void init(const string server_address, uint32_t server_port) {
         serverAddre.sin_addr.s_addr = inet_addr(server_address.c_str());
         serverAddre.sin_port = htons(server_port);
@@ -39,20 +45,22 @@ public:
 
         if (recv(clientSockFd, message, BUF_SIZE, 0) > 0)
             printf("%s", message);
+        printf("you ->");
         return ret;
     }
 
     int send() {
         printf("you -> ");
-        string text;
-        cin >> text;
-        if (text == "EXIT") {
-            ::send(clientSockFd, text.c_str(), text.size(), 0);
+
+        fgets(sendbuf, BUF_SIZE, stdin);
+        sendbuf[strcspn(sendbuf, "\n")] = '\0';
+        if (!strcmp(sendbuf, "EXIT")) {
+            ::send(clientSockFd, sendbuf, BUF_SIZE, 0);
             close(clientSockFd);
             close_flag = true;
         }
 
-        return ::send(clientSockFd, text.c_str(), text.size(), 0);
+        return ::send(clientSockFd, sendbuf, BUF_SIZE, 0);
     }
 
     int receive() {
@@ -62,6 +70,26 @@ public:
         return ret;
     }
 
+    void epollcon() {
+        epollID.addfd(clientSockFd, EPOLLIN, true);
+        epollID.addfd(0, EPOLLIN, true);
+    }
+
+    void process() {
+        while (!isClose()) {
+            int cnt = epollID.wait();
+            // printf("debug:in client, cnt %d\n", cnt);
+            for (int i = 0; i < cnt; ++i) {
+                int temfd = epollID.getfd(i);
+                if (temfd == 0) {
+                    this->send();
+                }
+                else {
+                    this->receive();
+                }
+            }
+        }
+    }
     bool isClose() {
         return close_flag;
     }
@@ -71,10 +99,8 @@ int main() {
     client c1;
     c1.init("127.0.0.1", 8080);
     c1.connectServer();
-    while (!c1.isClose()) {
-        c1.send();
-        c1.receive();
-    }
+    c1.epollcon();
+    c1.process();
 
     return 0;
 }

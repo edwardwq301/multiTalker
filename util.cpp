@@ -25,9 +25,8 @@ int Epoller::addfd(int fd, int newControlFlag, bool ET) {
     if (ET)
         newControlFlag |= EPOLLET;
 
-    setNonBlock(fd);
-
-    return epoll_ctl(this->epollfd, EPOLL_CTL_ADD, fd, &ev);
+    epoll_ctl(this->epollfd, EPOLL_CTL_ADD, fd, &ev);
+    return setNonBlock(fd);
 }
 
 int Epoller::modfd(int fd, int newControlFlag, bool ET) {

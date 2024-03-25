@@ -11,7 +11,7 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <unordered_set>
+#include <list>
 
 class Server {
 private:
@@ -20,7 +20,7 @@ private:
     std::string serverIP = "127.0.0.1";
     u_int32_t serverPort = 8080;
     int listener;
-    std::unordered_set<int> clients_list;
+    std::list<int> clients_list;
 
     char recvMessage[BUF_SIZE];
     char sendMessage[BUF_SIZE];
@@ -73,8 +73,8 @@ public:
         epollID.addfd(clientfd, EPOLLIN, true);
 
         // 服务端保存用户连接
-        clients_list.insert(clientfd);
-        printf("Now there are %d clients int the chat room\n", (int)clients_list.size());
+        clients_list.push_back(clientfd);
+        printf("Now there are %d clients in  chat room\n", (int)clients_list.size());
 
         // show welcome
         bzero(sendMessage, BUF_SIZE);
@@ -88,12 +88,18 @@ public:
 
     void processSend(int temfd) {
         bzero(recvMessage, BUF_SIZE);
+        // bzero must be before recv
         int ret = recv(temfd, recvMessage, BUF_SIZE, 0);
+        if (clients_list.size() == 1) {
+            send(temfd, ONLY_USER.c_str(), BUF_SIZE, 0);
+            return;
+        }
         // exit
-        if (!strcmp(recvMessage, EXIT.c_str())) {
+        if (!strcmp(recvMessage, EXIT.c_str()) || ret < 0) {
             epollID.delfd(temfd);
-            clients_list.erase(temfd);
+            clients_list.remove(temfd);
             printf("client %d log out\n", temfd);
+            printf("Now there are %d clients in  chat room\n", (int)clients_list.size());
         }
         else {
             for (int k : clients_list)
@@ -103,6 +109,7 @@ public:
                 }
         }
     }
+
     void process() {
         epollID.addfd(listener, EPOLLIN, true);
 
@@ -118,28 +125,11 @@ public:
                 // server get connetction
                 if (temfd == listener)
                     processConnect(temfd);
-
-                // client send message
                 else {
-                    if (clients_list.size() == 1)
-                        send(temfd, ONLY_USER.c_str(), BUF_SIZE, 0);
-                    else
-                        processSend(temfd);
+                    processSend(temfd);
                 }
             }
         }
-    }
-
-    void test() {
-        struct sockaddr_in client_address;
-        socklen_t client_addrLength = sizeof(struct sockaddr_in);
-        int clientfd =
-            accept(listener, (struct sockaddr *)&client_address, &client_addrLength);
-
-        printf("client connection from: %s : % d(IP : port), clientfd = %d \n",
-               inet_ntoa(client_address.sin_addr),
-               ntohs(client_address.sin_port),
-               clientfd);
     }
 };
 
