@@ -8,8 +8,12 @@
 #include <iostream>
 #include <unistd.h>
 #include <string.h>
+#include <csignal>
 
 using namespace std;
+
+bool shutdown_sigint = false;
+
 class client {
     struct sockaddr_in serverAddre;
     int clientSockFd;
@@ -50,6 +54,12 @@ public:
     }
 
     int send() {
+        if (shutdown_sigint) {
+            strcpy(sendbuf, "EXIT");
+            ::send(clientSockFd, sendbuf, BUF_SIZE, 0);
+            close(clientSockFd);
+            close_flag = true;
+        }
         printf("you -> ");
 
         fgets(sendbuf, BUF_SIZE, stdin);
@@ -95,7 +105,14 @@ public:
     }
 };
 
+void processSIG(int signum) {
+    if (signum == SIGINT) {
+        shutdown_sigint = true;
+    }
+}
+
 int main() {
+    signal(SIGINT, processSIG);
     client c1;
     c1.init("127.0.0.1", 8080);
     c1.connectServer();

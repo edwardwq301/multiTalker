@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <list>
+#include <csignal>
 
 class Server {
 private:
@@ -60,6 +61,7 @@ public:
         return ret;
     }
 
+
     void processConnect(int fd) {
         struct sockaddr_in client_address;
         socklen_t client_addrLength = sizeof(struct sockaddr_in);
@@ -94,6 +96,7 @@ public:
             send(temfd, ONLY_USER.c_str(), BUF_SIZE, 0);
             return;
         }
+        //    printf("%s %d\n", recvMessage, sizeof(recvMessage));
         // exit
         if (!strcmp(recvMessage, EXIT.c_str()) || ret < 0) {
             epollID.delfd(temfd);
