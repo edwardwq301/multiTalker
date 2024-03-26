@@ -141,4 +141,5 @@ int main() {
     Server ser;
     ser.createSocketAndListen();
     ser.process();
+    return 0;
 }
