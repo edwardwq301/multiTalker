@@ -92,17 +92,16 @@ public:
         bzero(recvMessage, BUF_SIZE);
         // bzero must be before recv
         int ret = recv(temfd, recvMessage, BUF_SIZE, 0);
-        if (clients_list.size() == 1) {
-            send(temfd, ONLY_USER.c_str(), BUF_SIZE, 0);
-            return;
-        }
-        //    printf("%s %d\n", recvMessage, sizeof(recvMessage));
-        // exit
-        if (!strcmp(recvMessage, EXIT.c_str()) || ret < 0) {
+
+        if (ret <= 0 || !strcmp(recvMessage, EXIT.c_str())) {
             epollID.delfd(temfd);
             clients_list.remove(temfd);
             printf("client %d log out\n", temfd);
             printf("Now there are %d clients in  chat room\n", (int)clients_list.size());
+        }
+        else if (clients_list.size() == 1) {
+            send(temfd, ONLY_USER.c_str(), BUF_SIZE, 0);
+            return;
         }
         else {
             for (int k : clients_list)
@@ -133,8 +132,10 @@ public:
                 }
             }
         }
+        printf("should not be here\n");
     }
 };
+
 
 
 int main() {
