@@ -34,7 +34,7 @@ public:
         serverAddr.sin_port = htons(serverPort);
     }
 
-    int createSocketAndListen() {
+    int CreateSocketAndListen() {
         listener = socket(AF_INET, SOCK_STREAM, 0);
         if (listener == -1) {
             perror("server: create socket failed\n");
@@ -62,7 +62,7 @@ public:
     }
 
 
-    void processConnect(int fd) {
+    void ProcessConnect(int fd) {
         struct sockaddr_in client_address;
         socklen_t client_addrLength = sizeof(struct sockaddr_in);
         int clientfd = accept(listener, (struct sockaddr *)&client_address, &client_addrLength);
@@ -72,7 +72,7 @@ public:
                ntohs(client_address.sin_port),
                clientfd);
 
-        epollID.addfd(clientfd, EPOLLIN, true);
+        epollID.Addfd(clientfd, EPOLLIN, true);
 
         // 服务端保存用户连接
         clients_list.push_back(clientfd);
@@ -88,13 +88,13 @@ public:
         }
     }
 
-    void processSend(int temfd) {
+    void ProcessSend(int temfd) {
         bzero(recvMessage, BUF_SIZE);
         // bzero must be before recv
         int ret = recv(temfd, recvMessage, BUF_SIZE, 0);
 
         if (ret <= 0 || !strcmp(recvMessage, EXIT.c_str())) {
-            epollID.delfd(temfd);
+            epollID.Delfd(temfd);
             clients_list.remove(temfd);
             printf("client %d log out\n", temfd);
             printf("Now there are %d clients in  chat room\n", (int)clients_list.size());
@@ -112,23 +112,23 @@ public:
         }
     }
 
-    void process() {
-        epollID.addfd(listener, EPOLLIN, true);
+    void Process() {
+        epollID.Addfd(listener, EPOLLIN, true);
 
         while (true) {
-            int eventCnt = epollID.wait();
+            int eventCnt = epollID.Wait();
 
             if (eventCnt < 0) {
                 perror("epollID wait failed\n");
                 exit(-1);
             }
             for (int i = 0; i < eventCnt; ++i) {
-                int temfd = epollID.getfd(i);
+                int temfd = epollID.Getfd(i);
                 // server get connetction
                 if (temfd == listener)
-                    processConnect(temfd);
+                    ProcessConnect(temfd);
                 else {
-                    processSend(temfd);
+                    ProcessSend(temfd);
                 }
             }
         }
@@ -140,7 +140,7 @@ public:
 
 int main() {
     Server ser;
-    ser.createSocketAndListen();
-    ser.process();
+    ser.CreateSocketAndListen();
+    ser.Process();
     return 0;
 }

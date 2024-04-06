@@ -15,7 +15,7 @@ const std::string ONLY_USER = "you are the only user\n";
 const int BUF_SIZE = 1024;
 
 
-int setNonBlock(int fd);
+int SetNonBlock(int fd);
 
 class Epoller {
 private:
@@ -25,16 +25,16 @@ private:
 public:
     explicit Epoller(int sz = 512);
 
-    int addfd(int fd, int newControlFlag, bool ET);
+    int Addfd(int fd, int newControlFlag, bool ET);
 
-    int delfd(int fd);
+    int Delfd(int fd);
 
-    int modfd(int fd, int newControlFlag, bool ET);
+    int Modfd(int fd, int newControlFlag, bool ET);
 
-    int wait();
+    int Wait();
 
-    int getfd(size_t i);
-    u_int32_t getEvent(size_t i);
+    int Getfd(size_t i);
+    u_int32_t GetEvent(size_t i);
 };
 
 

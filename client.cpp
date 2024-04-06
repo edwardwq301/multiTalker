@@ -30,8 +30,8 @@ public:
     client() :
         epollID() {
         socketpair(PF_UNIX, SOCK_STREAM, 0, pipefd);
-        setNonBlock(pipefd[1]);
-        epollID.addfd(pipefd[0], EPOLLIN, true);
+        SetNonBlock(pipefd[1]);
+        epollID.Addfd(pipefd[0], EPOLLIN, true);
     }
 
     ~client() {
@@ -102,17 +102,17 @@ public:
     }
 
     void epollAddSockStdin() {
-        epollID.addfd(clientSockFd, EPOLLIN, true);
-        epollID.addfd(0, EPOLLIN, true);
+        epollID.Addfd(clientSockFd, EPOLLIN, true);
+        epollID.Addfd(0, EPOLLIN, true);
     }
 
 
     void process() {
         while (!isClose()) {
-            int cnt = epollID.wait();
+            int cnt = epollID.Wait();
             // printf("debug:in client, cnt %d\n", cnt);
             for (int i = 0; i < cnt; ++i) {
-                int temfd = epollID.getfd(i);
+                int temfd = epollID.Getfd(i);
                 if (temfd == 0) {
                     this->send();
                 }
