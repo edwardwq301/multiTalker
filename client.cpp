@@ -17,7 +17,7 @@ using namespace std;
 
 int pipefd[2];
 
-class client {
+class Client {
     struct sockaddr_in serverAddre;
     int clientSockFd;
     string words;
@@ -27,18 +27,18 @@ class client {
 
 public:
     Epoller epollID;
-    client() :
+    Client() :
         epollID() {
         socketpair(PF_UNIX, SOCK_STREAM, 0, pipefd);
         SetNonBlock(pipefd[1]);
         epollID.Addfd(pipefd[0], EPOLLIN, true);
     }
 
-    ~client() {
+    ~Client() {
         close(pipefd[1]);
         close(pipefd[0]);
     }
-    void init(const string server_address, uint32_t server_port) {
+    void Init(const string server_address, uint32_t server_port) {
         serverAddre.sin_addr.s_addr = inet_addr(server_address.c_str());
         serverAddre.sin_port = htons(server_port);
         serverAddre.sin_family = AF_INET;
@@ -50,7 +50,7 @@ public:
         }
     }
 
-    int connectServer() {
+    int ConnectServer() {
         int ret = connect(clientSockFd, (sockaddr *)&serverAddre, sizeof(serverAddre));
 
         if (-1 == ret) {
@@ -64,7 +64,7 @@ public:
         return ret;
     }
 
-    int send() {
+    int Send() {
         fgets(sendbuf, BUF_SIZE, stdin);
         sendbuf[strcspn(sendbuf, "\n")] = '\0';
         if (!strcmp(sendbuf, "EXIT")) {
@@ -76,14 +76,14 @@ public:
         return ::send(clientSockFd, sendbuf, BUF_SIZE, 0);
     }
 
-    int receive() {
+    int Receive() {
         int ret = recv(clientSockFd, message, BUF_SIZE, 0);
         if (ret > 0)
             printf("%s", message);
         return ret;
     }
 
-    void processSIG() {
+    void ProcessSIG() {
         int sig;
         char signals[1024];
         int ret = recv(pipefd[0], signals, sizeof(signals), 0);
@@ -101,37 +101,37 @@ public:
         }
     }
 
-    void epollAddSockStdin() {
+    void ListenStdIn() {
         epollID.Addfd(clientSockFd, EPOLLIN, true);
         epollID.Addfd(0, EPOLLIN, true);
     }
 
 
-    void process() {
-        while (!isClose()) {
+    void Process() {
+        while (!IsClose()) {
             int cnt = epollID.Wait();
             // printf("debug:in client, cnt %d\n", cnt);
             for (int i = 0; i < cnt; ++i) {
                 int temfd = epollID.Getfd(i);
                 if (temfd == 0) {
-                    this->send();
+                    this->Send();
                 }
                 else if (temfd == pipefd[0]) {
-                    this->processSIG();
+                    this->ProcessSIG();
                 }
                 else {
-                    this->receive();
+                    this->Receive();
                 }
             }
         }
     }
 
-    bool isClose() {
+    bool IsClose() {
         return close_flag;
     }
 };
 
-void sigHandler(int signum) {
+void SigHandler(int signum) {
     int sig = signum;
     if (sig == SIGINT) {
         send(pipefd[1], (char *)&sig, 1, 0);
@@ -139,12 +139,12 @@ void sigHandler(int signum) {
 }
 
 int main() {
-    signal(SIGINT, sigHandler);
-    client c1;
-    c1.init("127.0.0.1", 8080);
-    c1.connectServer();
-    c1.epollAddSockStdin();
-    c1.process();
+    signal(SIGINT, SigHandler);
+    Client c1;
+    c1.Init("127.0.0.1", 8080);
+    c1.ConnectServer();
+    c1.ListenStdIn();
+    c1.Process();
 
     return 0;
 }
