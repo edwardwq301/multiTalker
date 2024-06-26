@@ -1,8 +1,12 @@
 #ifndef UTIL_H
 #define UTIL_H
 #include <fcntl.h>
+#include <string>
 #include <sys/epoll.h>
 #include <vector>
+
+const int SZ = 1024;
+const std::string ONLYYOU = "only you in room";
 
 int SetNonBlock(int fd) {
     int old_commands = fcntl(fd, F_GETFL);
@@ -12,6 +16,7 @@ int SetNonBlock(int fd) {
 class Epoller {
     int max_todo;
     int fd_epoller;
+
 public:
     std::vector<struct epoll_event> todos;
     explicit Epoller(int sz = 256) {
@@ -30,9 +35,11 @@ public:
         };
         ev.data.fd = fd;
         ev.events = EPOLLIN;
-        if (edge_triger) ev.events |= EPOLLET;
+        if (edge_triger) {
+            ev.events |= EPOLLET;
+            SetNonBlock(fd);
+        }
         epoll_ctl(fd_epoller, EPOLL_CTL_ADD, fd, &ev);
-        SetNonBlock(fd);
     }
 
     void Modfd(int fd, int flag, bool edge_triger = false) {
@@ -44,7 +51,7 @@ public:
         if (edge_triger) ev.events |= EPOLLET;
         epoll_ctl(fd_epoller, EPOLL_CTL_MOD, fd, &ev);
     }
-    
+
     void Delfd(int fd) {
         epoll_ctl(fd_epoller, EPOLL_CTL_DEL, fd, nullptr);
     }

@@ -13,15 +13,18 @@ void test_FileLogger() {
     ptr->Flush();
 }
 
+
+
 class Server {
 private:
     int fd_server;
     struct sockaddr_in addr_server;
     const int addrlen = sizeof(addr_server);
-
     Epoller eper;
     unique_ptr<FileLogger> logger;
     list<int> client_list;
+
+    char recv_buffer[SZ];
 
 public:
     Server(string addr = "127.0.0.1", uint16_t port = 8080) : eper() {
@@ -40,7 +43,7 @@ public:
     }
 
     void Process() {
-        eper.Addfd(fd_server, false);
+        eper.Addfd(fd_server, true);
         while (true) {
             int todo_cnt = eper.Wait();
             if (todo_cnt < 0) {
@@ -48,15 +51,14 @@ public:
                 logger->Flush();
                 exit(-1);
             }
-            for (auto x : eper.todos) {
-                int temfd = x.data.fd;
-                if (temfd == fd_server)
-                    ProcessConnect();
-                else
-                    ProcessSend(temfd);
+            for (int x = 0; x < todo_cnt; x++) {
+                int temfd = eper.todos[x].data.fd;
+                if (temfd == fd_server) { ProcessConnect(); }
+                else { ProcessClient(temfd); }
             }
         }
     }
+
     void ProcessConnect() {
         struct sockaddr_in client_address;
         socklen_t client_address_len = sizeof(client_address);
@@ -68,7 +70,7 @@ public:
         logger->Write(ss.str());
 
 
-        eper.Addfd(fd_client, false);
+        eper.Addfd(fd_client, true);
         client_list.push_back(fd_client);
         string nowHave = to_string(client_list.size()).append("in room");
         logger->Write(nowHave);
@@ -84,22 +86,38 @@ public:
         }
     }
 
-    void ProcessSend(int temfd) {
-        char buffer[1024];
-        int bytesReceived = recv(temfd, buffer, sizeof(buffer), 0);
+    void ProcessClient(int temfd) {
+        string client_say = GetClientSay(temfd);
+        Broadcast(temfd, client_say);
+    }
+
+    void Broadcast(int temfd, const string & message) {
+        if (client_list.size() == 1) { send(temfd, ONLYYOU.c_str(), ONLYYOU.size(), 0); }
+        else {
+            for (int client : client_list)
+                if (client != temfd) { send(client, message.c_str(), message.size(), 0); }
+        }
+    }
+
+    string GetClientSay(int temfd) {
+        fill(recv_buffer, recv_buffer + SZ, 0);
+        int bytesReceived = recv(temfd, recv_buffer, sizeof(recv_buffer), 0);
         if (bytesReceived == -1) {
             logger->Write("Error receiving data from client");
+            logger->Flush();
             exit(-1);
         }
 
-        std::string receivedString(buffer, bytesReceived);
+        std::string receivedString(recv_buffer, bytesReceived);
+
+        if (receivedString == "exit") {
+            client_list.remove(temfd);
+            eper.Delfd(temfd);
+            logger->Write("client leave");
+        }
         logger->Write("Received string from client: " + receivedString);
         logger->Flush();
-    }
-    bool listenandacc() {
-        int new_session = accept(fd_server, (struct sockaddr *)(&addr_server), (socklen_t *)(&addrlen));
-        string anw = "hello form server";
-        cout << send(new_session, anw.c_str(), anw.length(), 0);
+        return receivedString;
     }
 };
 
