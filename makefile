@@ -3,10 +3,10 @@ CFLAGS = -Wall
 
 all: server client
 
-server: server.cpp
+server: server.cpp util.h
 	$(CC) $< $(CFLAGS) -o $@ 
 
-client: client.cpp
+client: client.cpp util.h
 	$(CC) $< $(CFLAGS) -o $@
 
 .PHONY: clean

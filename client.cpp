@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <iostream>
 #include <netinet/in.h>
+#include <sstream>
 #include <string>
 #include <unistd.h>
 
@@ -22,7 +23,11 @@ class Client {
             cerr << "client read failed";
             return -1;
         }
-        std::cout << buffer << std::endl;
+        
+        ostringstream oss;
+        // green
+        oss << "\033[32m" << buffer << "\033[0m";
+        std::cout << oss.str() << std::endl;
         return recv_cnt;
     }
 

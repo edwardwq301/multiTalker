@@ -6,14 +6,6 @@
 #include <sstream>
 using namespace std;
 
-void test_FileLogger() {
-    auto ptr = FileLogger::GetInstance();
-    ptr->Write("hello");
-    ptr->Write("world");
-    ptr->Flush();
-}
-
-
 
 class Server {
 private:
@@ -37,8 +29,9 @@ public:
     }
 
     bool Bind_Listen() {
-        if (bind(fd_server, (struct sockaddr *)(&addr_server), addrlen) < 0) logger->Write("server bind failed");
-        if (listen(fd_server, 5) < 0) logger->Write("server listen failed");
+        if (bind(fd_server, (struct sockaddr *)(&addr_server), addrlen) < 0)
+            logger->Write(ERROR + "server bind failed");
+        if (listen(fd_server, 5) < 0) logger->Write(ERROR + "server listen failed");
         logger->Flush();
     }
 
@@ -66,21 +59,20 @@ public:
 
         // format string
         stringstream ss;
-        ss << "accept conn: " << inet_ntoa(client_address.sin_addr) << ':' << ntohs(client_address.sin_port);
+        ss << LOGIN << "accept conn: " << inet_ntoa(client_address.sin_addr) << ':' << ntohs(client_address.sin_port)
+           << " which is client " + to_string(fd_client);
         logger->Write(ss.str());
 
 
         eper.Addfd(fd_client, true);
         client_list.push_back(fd_client);
-        string nowHave = to_string(client_list.size()).append("in room");
-        logger->Write(nowHave);
+        string nowHave = NOWHAVE + to_string(client_list.size());
+        logger->Write(INFO + nowHave);
         logger->Flush();
 
-        // show welcome
-        string welcome = "welcome " + nowHave;
-        int ret = send(fd_client, welcome.c_str(), welcome.size(), 0);
+        int ret = send(fd_client, nowHave.c_str(), nowHave.size(), 0);
         if (ret < 0) {
-            logger->Write("server send welcome fail");
+            logger->Write(ERROR + "server send welcome fail");
             logger->Flush();
             exit(-1);
         }
@@ -103,7 +95,7 @@ public:
         fill(recv_buffer, recv_buffer + SZ, 0);
         int bytesReceived = recv(temfd, recv_buffer, sizeof(recv_buffer), 0);
         if (bytesReceived == -1) {
-            logger->Write("Error receiving data from client");
+            logger->Write(ERROR + "failed receiving data from client fd: " + to_string(temfd));
             logger->Flush();
             exit(-1);
         }
@@ -113,9 +105,10 @@ public:
         if (receivedString == "exit") {
             client_list.remove(temfd);
             eper.Delfd(temfd);
-            logger->Write("client leave");
+            logger->Write(LOGOUT + "client " + to_string(temfd) + " leave");
         }
-        logger->Write("Received string from client: " + receivedString);
+        else
+            logger->Write(INFO + "client " + to_string(temfd) + " : " + receivedString);
         logger->Flush();
         return receivedString;
     }

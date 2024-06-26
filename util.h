@@ -7,6 +7,11 @@
 
 const int SZ = 1024;
 const std::string ONLYYOU = "only you in room";
+const std::string ERROR = "[error]  ";
+const std::string INFO = "[info]   ";
+const std::string LOGIN = "[login]  ";
+const std::string LOGOUT = "[logout] ";
+const std::string NOWHAVE = "total people: ";
 
 int SetNonBlock(int fd) {
     int old_commands = fcntl(fd, F_GETFL);
